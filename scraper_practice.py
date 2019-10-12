@@ -110,15 +110,10 @@ While pagecounter<=results_total:
 print(html_soup)
 """
 import pandas as pd
-post_timing = []
-post_hoods = []
-post_title_texts = []
-post_links = []
-post_prices = []
-post_attribute = []
+
 eb_apts = pd.DataFrame({'posted': post_timing, 
 						'neighborhood': post_hoods,
 						'post title': post_title_texts,
 						'link' : post_links,
 						'prices' :  post_prices,
-						'attributes' : post_attributes)
+						'attributes' : post_attribute})
