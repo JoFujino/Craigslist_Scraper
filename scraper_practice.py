@@ -12,8 +12,8 @@
 #~ pairing = pairing + (buyers[i], prices[i])
 #~ print(pairing)
 
-
-from lxml import html
+import pandas as pd
+import lxml
 import requests
 from random import randrange
 import time
@@ -21,21 +21,20 @@ from bs4 import BeautifulSoup
 import numpy as np
 
 def cleanhtml(list):
-	n = len(list)
-	for k in range(n):
-		list[k] = BeautifulSoup(list[k], "lxml").text
+	for k in range(len(list)):
+		list[k] = BeautifulSoup(str(list[k]),'html.parser').text
 	return list
 
 page = requests.get('https://sfbay.craigslist.org/d/rooms-shares/search/roo')
-tree = html.fromstring(page.content)
-location = tree.xpath('//span[@class="result-hood"]/text()')
-price = tree.xpath('//span[@class="result-price"]/text()')
-link = tree.xpath('//a[@class="result-title hdrlnk"]/text()')
-n = len(location)
-k = len(price)
-pairing = ()
-for i in range(n):
-	pairing = pairing + (location[i], price[i])
+# tree = html.fromstring(page.content)
+# location = tree.xpath('//span[@class="result-hood"]/text()')
+# price = tree.xpath('//span[@class="result-price"]/text()')
+# link = tree.xpath('//a[@class="result-title hdrlnk"]/text()')
+# n = len(location)
+# k = len(price)
+# pairing = ()
+# for i in range(n):
+# 	pairing = pairing + (location[i], price[i])
 	
 
 html_soup=BeautifulSoup(page.text, 'html.parser')
@@ -74,10 +73,14 @@ for post in posts:
 		post_spans = []
 		for j in range(len(post_attgp)):
 			post_attriblist = post_attgp[j].find_all('span', class_='')
-		print(post_attriblist)
 		post_attriblist = cleanhtml(post_attriblist)
-		post_spans.append(post_attriblist)
-		print(post_attribute)
+		post_attribute.append(post_attriblist)
+		# if len(post_attribute)=0: 
+		# 	post_spans.append([''])
+		resultscounter+=1
+		if resultscounter>125:
+			break
+
 		
 		
 
@@ -109,11 +112,20 @@ While pagecounter<=results_total:
 	print('success '+str(resultscounter))
 print(html_soup)
 """
-import pandas as pd
 
-eb_apts = pd.DataFrame({'posted': post_timing, 
+eb_apts = pd.DataFrame({'posted': post_timing,
 						'neighborhood': post_hoods,
 						'post title': post_title_texts,
 						'link' : post_links,
 						'prices' :  post_prices,
 						'attributes' : post_attribute})
+eb_apts.sort_values(by = ['neighborhood', 'posted'])
+# since we're scraping while new posts are being added pushing down the existing posts we can sometimes accidentally scrape the same ad twice.
+# to address this we need to drop the duplicates.
+eb_apts.drop_duplicates
+print(eb_apts.info)
+# Neighborhood is in parenthesis so we're stripping those out.
+eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace('(','',1))
+eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace(')','',1))
+
+eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
