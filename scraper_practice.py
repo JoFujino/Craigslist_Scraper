@@ -11,14 +11,16 @@
 #~ for i in range(n):
 #~ pairing = pairing + (buyers[i], prices[i])
 #~ print(pairing)
-
-import pandas as pd
 import lxml
 import requests
+from bs4 import BeautifulSoup
 from random import randrange
 import time
-from bs4 import BeautifulSoup
 import numpy as np
+import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+
 
 def cleanhtml(list):
 	for k in range(len(list)):
@@ -113,19 +115,41 @@ While pagecounter<=results_total:
 print(html_soup)
 """
 
-eb_apts = pd.DataFrame({'posted': post_timing,
+eb_apts = pd.DataFrame({'date': post_timing,
 						'neighborhood': post_hoods,
-						'post title': post_title_texts,
+						'title': post_title_texts,
 						'link' : post_links,
 						'prices' :  post_prices,
 						'attributes' : post_attribute})
-eb_apts.sort_values(by = ['neighborhood', 'posted'])
+eb_apts.sort_values(by = ['neighborhood', 'date'])
 # since we're scraping while new posts are being added pushing down the existing posts we can sometimes accidentally scrape the same ad twice.
 # to address this we need to drop the duplicates.
 eb_apts.drop_duplicates
-print(eb_apts.info)
 # Neighborhood is in parenthesis so we're stripping those out.
 eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace('(','',1))
 eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace(')','',1))
 
-eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
+# If you want to output a .csv as well use the below code:
+# eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
+sqlEngine = create_engine('mysql+pymysql://root:@127.0.0.1/db', pool_recycle=3600)
+dbConnection    = sqlEngine.connect() 
+
+try:
+
+    frame           = eb_apts.to_sql(craigsdata, dbConnection, if_exists='fail');
+
+except ValueError as vx:
+
+    print('value error' + '\n' + vx)
+
+except Exception as ex:   
+
+    print('Exception' + '\n' + ex)
+
+else:
+
+    print("Table %s created successfully."%Craigsdata);   
+
+finally:
+
+    dbConnection.close()
