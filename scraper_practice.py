@@ -18,13 +18,21 @@ from random import randrange
 import time
 import numpy as np
 import pandas as pd
-from SQLAlchemy import create_engine
+from sqlalchemy import create_engine
 
 
 def cleanhtml(list):
 	for k in range(len(list)):
 		list[k] = BeautifulSoup(str(list[k]),'html.parser').text
 	return list
+
+
+# If you want to output a .csv as well use the below code:
+# eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
+#sqlEngine = create_engine('mysql+pymysql://root:@192.168.0.108/craigsdata', pool_recycle=3600)
+sqlEngine = create_engine('mysql+pymysql://root:@127.0.0.1/craigsdata', pool_recycle=3600)
+dbConnection    = sqlEngine.connect() 
+
 
 page = requests.get('https://sfbay.craigslist.org/d/rooms-shares/search/roo')
 # tree = html.fromstring(page.content)
@@ -127,12 +135,6 @@ eb_apts.drop_duplicates
 # Neighborhood is in parenthesis so we're stripping those out.
 eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace('(','',1))
 eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace(')','',1))
-
-# If you want to output a .csv as well use the below code:
-# eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
-#sqlEngine = create_engine('mysql+pymysql://root:@192.168.0.108/craigsdata', pool_recycle=3600)
-sqlEngine = create_engine('mysql+pymysql://root:@127.0.0.1/craigsdata', pool_recycle=3600)
-dbConnection    = sqlEngine.connect() 
 
 try:
 
