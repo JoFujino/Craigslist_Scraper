@@ -131,25 +131,26 @@ eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace(')',''
 
 # If you want to output a .csv as well use the below code:
 # eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
-sqlEngine = create_engine('mysql+pymysql://root:@127.0.0.1/db', pool_recycle=3600)
+#sqlEngine = create_engine('mysql+pymysql://root:@192.168.0.108/craigsdata', pool_recycle=3600)
+sqlEngine = create_engine('mysql+pymysql://root:@127.0.0.1/craigsdata', pool_recycle=3600)
 dbConnection    = sqlEngine.connect() 
 
 try:
 
-    frame           = eb_apts.to_sql(craigsdata, dbConnection, if_exists='fail');
+	frame           = eb_apts.to_sql('scrapeddata', dbConnection, if_exists='fail');
 
 except ValueError as vx:
 
-    print('value error' + '\n' + vx)
+	print('value error' + '\n' + vx)
 
 except Exception as ex:   
 
-    print('Exception' + '\n' + ex)
+	print('Exception' + '\n' + ex)
 
 else:
 
-    print("Table %s created successfully."%Craigsdata);   
+	print("Table %s created successfully."%Craigsdata);   
 
 finally:
 
-    dbConnection.close()
+	dbConnection.close()
