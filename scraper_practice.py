@@ -93,7 +93,7 @@ for post in posts:
 		
 Print('broke before big loop')
 
-While pagecounter<=results_total:
+While resultscounter<=results_total:
 	page = requests.get('https://sfbay.craigslist.org/d/rooms-shares/search/roo'+'?s='+str(resultscounter))
 	ran = randrange(1,6)
 	time.sleep(ran)
@@ -131,7 +131,7 @@ While pagecounter<=results_total:
 	print('success '+str(resultscounter))
 	if resultscounter>360:
 		break
-	
+
 print(html_soup)
 
 
