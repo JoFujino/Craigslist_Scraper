@@ -19,12 +19,12 @@ conn <- dbConnect(MySQL(), user='josh', dbname='craigsdata', host='127.0.0.1')
 dbGetQuery(conn, 'select * from "scrapeddata"')
 print('connection successful')
 #Generate columns for Furnished, Pet Indicators, laundry, parking and female preferred/only
-
 data$furnished=NA
 data$pet=NA
 data$laundry=NA
 data$parking=NA
 data$female=NA
+data$titlelen=NA
 #Now we'll loop through every line and check which attributes it has
 for (i in 1:nrow(data)) {
   # in col. 7 we'll populate an indicator var. for if it is furnished.
@@ -53,6 +53,8 @@ for (i in 1:nrow(data)) {
   }
   # In col. 11 we'll populate an indicator var. for if they have a female preference/only female.
   data[i,11] <- indvar(i,3, 'female')
+  # In col. 12 we'll populate with the length of the title of the posts.
+  data[i,12]=nchar(str_trim(data[i,3]))
 }
 
 #Amenities will be the sum of positive attributes identified in the prior loop.
@@ -69,16 +71,16 @@ hist(data$prices)
 data$OneK=0
 for (i in 1:nrow(data)) {
   if (data[i,5]>=1000) {
-    data[i,13] <- 1
+    data[i,14] <- 1
   }
 }
 
 #Now ideally we'd do something like A/B Testing to show optimal price points for a large range in quality may be below $1,000. Since we can't do true A/B testing we'll use our 
 #attributes to forecast the price and then get the error and run a regression of the error against the OneK variable.
 
-
+#Section 1: Linear model
 #plot(density(cars$dist), main="Density Plot: Distance", ylab="Frequency", sub=paste("Skewness:", round(e1071::skewness(cars$dist), 2)))  # density plot for 'dist'
-linearmod <- lm(prices ~ furnished + pet + laundry + parking + female, data=data)
+linearmod <- lm(prices ~ furnished + pet + laundry + parking + female + titlelen, data=data)
 summary(linearmod)
 lmModerror <- residuals(linearmod)
 data <- cbind(data, lmModerror)
@@ -86,12 +88,71 @@ pricepointtest <- lm(lmModerror ~ OneK, data=data)
 summary(pricepointtest)
 #It doesn't appear as if $1,000 is a significant price point
 
-#One observation we can make from our rough linear model (need to go back and deal with outliers) is that whether it is furnished, whether it allows pets,
-#and whether it is female preferred/only didn't have a significant impact on price.
+#One observation we can make from our rough linear model (need to go back and deal with outliers) is that whether 
+#it is furnished, whether it allows pets, and whether it is female preferred/only didn't have a significant impact
+#on price.What seemed to matter was Laundry, and parking.
+#Title length is tricky as it might be capturing other custom attributes possessed by the property or longer
+#it may just reflect the landlord's need to justify the higher price or attempt to stir up more enthusiasm or
+#attention (especially if they have to list it multiple times and it's been posted for days).
+
+
+#Section 2: Exploration of if we can build an algorithm to predict misleading listings.
+#Note: we have one indicator of a misleading listing.  Prices $1 or less it's safe to say are not actually going to be for rent for $0-$1.
+#at the very least there's probably some quid pro quo if the true price isn't higher.
+
+#Let's build vocabulary of words used in the titles
+parse_spaces <- function(string){
+  words <- c()
+  lastspace=0
+  string <- gsub("[[:punct:]]", " ", string) # takes care of special characters like parenthesis and backslash
+  vectorofspaces <- unlist(gregexpr(" ", string))
+  for (i in vectorofspaces) {
+    if (i-lastspace == 1){next} #avoids having empty entries in words if there are two spaces next to each other
+    words <- c(words, substring(string, lastspace+1,i-1))
+    lastspace <- i 
+  }
+  #Now the last word will be missing unless we do the below.  ALso, the if statements avoids having blank entries if it ends in a space
+  if (nchar(string)-lastspace != 1){
+    words <- c(words, substring(string, lastspace+1, nchar(string)))
+  }
+  return(words)
+}
+#parse_spaces returns a vector of words used in the string (i.e. the title)
+
+#Let's remove the numbers since they're probably prices (except if it's below 6 because are probably room counts)
+remove_numbers <- function(vector){
+  numindex = c()
+  for (i in 1:length(vector)){
+    if (suppressWarnings(is.na(as.numeric(trimws(vector[i]))))){
+      numindex = c(numindex,FALSE)
+    } else if (as.numeric(trimws(vector[i]))<6) {
+      numindex = c(numindex,FALSE)
+    } else {
+      numindex = c(numindex,TRUE)
+    }
+  }
+  return(vector[! numindex])
+}
+
+vocabulary <- c()
+for(i in 1:nrow(data)) {
+  words_in_title <- remove_numbers(parse_spaces(data[i,3]))
+  for (k in 1:length(words_in_title)) {
+    checkforentry <- grep(representation(words_in_title[k]), vocabulary)
+    #Now if there is no preexisting entry we'll add it to the vocabulary
+    if (length(checkforentry)==0){
+      vocabulary <- c(vocabulary, words_in_title[k])
+    }
+  }
+}
+#vocabulary is now a list of all the unique words used in the titles.
+
+#INCOMPLETE LEFT OFF HERE
+
+
 
 #P.S. I haven't gotten to it yet, but later I hope to clean up and incorporate neighborhood
 #Neighborhood per below certainly does seem significant but it also appears to have a lot of outliers and we need to clean up the categories since many posters listed multiple neighborhoods (some at the county level, some at the city level, and some at a local sub-city level)
 ggplot(data, aes(x=neighborhood, y=prices)) + geom_boxplot() + ggtitle("Neighborhood Prices Boxplot")
-
 
 dbDisconnect(conn)
