@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Optimally we'd run this with a proxyscraper to avoid having a large number of requests coming from the same 
 #import deletetable
 import lxml
@@ -8,6 +10,7 @@ import time
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
+import datetime #for filenames
 
 #First lets build a way to control how large a size N sample we are collecting (each cycle takes about 3 seconds)
 def getcycles():
@@ -22,7 +25,12 @@ def cleanhtml(list):
 		list[k] = BeautifulSoup(str(list[k]),'html.parser').text
 	return list
 
-# Lets start by ensuring we can make a connection to our SQL database.
+# First let's start by getting the date using the datetime module
+currentdate = datetime.datetime.today()
+currentdate = currentdate.strftime("%m%d%y")
+
+
+# Next we'll ensuring we can make a connection to our SQL database.
 
 #Note: 'craigsdata' is the name of the database.
 #sqlEngine = create_engine('mysql+pymysql://root:@192.168.0.108/craigsdata', pool_recycle=3600)
@@ -34,7 +42,8 @@ dbConnection.execute("CREATE DATABASE IF NOT EXISTS craigsdata;")
 dbConnection.execute("USE craigsdata;")
 sqlEngine = create_engine('mysql+pymysql://root:r3e3d3@127.0.0.1/craigsdata', pool_recycle=3600)
 dbConnection    = sqlEngine.connect()
-sql = str('DROP TABLE IF EXISTS scrapeddata;')
+#If the table already exists when we saved it later we'll have an error.  If you want you can change this from dropping to creating a second table and joining.
+sql = str('DROP TABLE IF EXISTS scrapeddata%s;' %currentdate)
 result = sqlEngine.execute(sql)
 # This section gets the results count from bottom of page
 # 1. we'll pull up the front page of the area we're scraping
@@ -120,12 +129,12 @@ eb_apts['neighborhood'] = eb_apts['neighborhood'].map(lambda x: x.replace(')',''
 	
 print("cleaned dataframe")
 print(eb_apts)	
-# "scrapeddata" will be our table name.
-eb_apts.to_csv("eb_apts_sample_clean.csv", index=False)
+# "scrapeddataMM-DD-YYYY" will be our table name.
+eb_apts.to_csv("eb_apts_sample_clean%s.csv" % currentdate, index=False)
 
 try:
 
-	frame           = eb_apts.to_sql('scrapeddata', dbConnection, if_exists='fail')
+	frame           = eb_apts.to_sql('scrapeddata%s' % currentdate, dbConnection, if_exists='fail')
 
 except ValueError as vx:
 
@@ -139,7 +148,7 @@ except Exception as ex:
 
 else:
 
-	print("Table \"scrapeddata\" created successfully.")   
+	print("Table scrapeddata%s created successfully." %currentdate)   
 
 finally:
 
